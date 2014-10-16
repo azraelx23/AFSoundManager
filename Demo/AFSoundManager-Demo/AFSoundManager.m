@@ -14,8 +14,6 @@
 @property (nonatomic) int type;
 @property (nonatomic, strong) UIImage *artwork;
 
--(void)fetchInfoForCurrentPlaying;
-
 @end
 
 typedef NS_ENUM(int, AFSoundManagerType) {
@@ -41,25 +39,26 @@ typedef NS_ENUM(int, AFSoundManagerType) {
     return soundManager;
 }
 
--(void)startPlayingLocalFileWithName:(NSString *)name andBlock:(progressBlock)block {
-    
+-(void)startPlayingLocalFileInMainResourceBundleWithName:(NSString *)name andBlock:(progressBlock)block{
+    NSString *filePath = [NSString stringWithFormat:@"%@/%@", [[NSBundle mainBundle]resourcePath], name];
+    [self startPlayingLocalFileWithPath:filePath andBlock:block];
+}
+
+-(void)startPlayingLocalFileWithPath:(NSString *)localFilePath andBlock:(progressBlock)block{
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
     [[AVAudioSession sharedInstance] setActive:YES error:nil];
     
-    NSString *filePath = [NSString stringWithFormat:@"%@/%@", [[NSBundle mainBundle]resourcePath], name];
-    NSURL *fileURL = [NSURL fileURLWithPath:filePath];
+    NSURL *fileURL = [NSURL fileURLWithPath:localFilePath];
     NSError *error = nil;
     
     NSData *data = [[NSData alloc] initWithContentsOfURL:fileURL options:NSDataReadingMappedIfSafe error:nil];
-
+    
     _audioPlayer = [[AVAudioPlayer alloc]initWithData:data error:&error];
     [_audioPlayer play];
     
     _type = AFSoundManagerTypeLocal;
     _status = AFSoundManagerStatusPlaying;
     [_delegate currentPlayingStatusChanged:AFSoundManagerStatusPlaying];
-    
-    [self fetchInfoForCurrentPlaying];
     
     __block int percentage = 0;
     
@@ -69,14 +68,14 @@ typedef NS_ENUM(int, AFSoundManagerType) {
             
             percentage = (int)((_audioPlayer.currentTime * 100)/_audioPlayer.duration);
             int timeRemaining = _audioPlayer.duration - _audioPlayer.currentTime;
-
+            
             if (block) {
                 block(percentage, _audioPlayer.currentTime, timeRemaining, error, NO);
             }
         } else {
             
             int timeRemaining = _audioPlayer.duration - _audioPlayer.currentTime;
-
+            
             if (block) {
                 block(100, _audioPlayer.currentTime, timeRemaining, error, YES);
             }

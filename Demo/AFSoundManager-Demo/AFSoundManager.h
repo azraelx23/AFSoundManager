@@ -44,7 +44,8 @@ typedef void (^progressBlock)(int percentage, CGFloat elapsedTime, CGFloat timeR
 
 @property (nonatomic) int status;
 
--(void)startPlayingLocalFileWithName:(NSString *)name andBlock:(progressBlock)block;
+-(void)startPlayingLocalFileInMainResourceBundleWithName:(NSString *)name andBlock:(progressBlock)block;
+-(void)startPlayingLocalFileWithPath:(NSString *)localFilePath andBlock:(progressBlock)block;
 -(void)startStreamingRemoteAudioFromURL:(NSString *)url andBlock:(progressBlock)block;
 -(void)startPlayingQueueWithItems:(NSArray *)array andBlock:(progressBlock)block;
 
