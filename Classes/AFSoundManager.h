@@ -9,6 +9,7 @@
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <AVFoundation/AVFoundation.h>
+#import <MediaPlayer/MediaPlayer.h>
 #import <objc/runtime.h>
 
 #import "AFAudioRouter.h"
@@ -29,7 +30,7 @@ typedef NS_ENUM (int, AFSoundManagerStatus) {
 
 @end
 
-@interface AFSoundManager : NSObject
+@interface AFSoundManager : NSObject<AVAudioPlayerDelegate>
 
 typedef void (^progressBlock)(int percentage, CGFloat elapsedTime, CGFloat timeRemaining, NSError *error, BOOL finished);
 
@@ -39,11 +40,14 @@ typedef void (^progressBlock)(int percentage, CGFloat elapsedTime, CGFloat timeR
 @property (nonatomic, strong) AVAudioPlayer *audioPlayer;
 @property (nonatomic, strong) AVPlayer *player;
 @property (nonatomic, strong) AVAudioRecorder *recorder;
+@property (nonatomic, strong) AVQueuePlayer *queuePlayer;
 
 @property (nonatomic) int status;
 
--(void)startPlayingLocalFileWithName:(NSString *)name andBlock:(progressBlock)block;
+-(void)startPlayingLocalFileInMainResourceBundleWithName:(NSString *)name andBlock:(progressBlock)block;
+-(void)startPlayingLocalFileWithPath:(NSString *)localFilePath andBlock:(progressBlock)block;
 -(void)startStreamingRemoteAudioFromURL:(NSString *)url andBlock:(progressBlock)block;
+-(void)startPlayingQueueWithItems:(NSArray *)array andBlock:(progressBlock)block;
 
 -(void)pause;
 -(void)resume;

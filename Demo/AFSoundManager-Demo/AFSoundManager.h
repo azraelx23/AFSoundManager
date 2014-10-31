@@ -30,7 +30,7 @@ typedef NS_ENUM (int, AFSoundManagerStatus) {
 
 @end
 
-@interface AFSoundManager : NSObject
+@interface AFSoundManager : NSObject<AVAudioPlayerDelegate>
 
 typedef void (^progressBlock)(int percentage, CGFloat elapsedTime, CGFloat timeRemaining, NSError *error, BOOL finished);
 

@@ -52,8 +52,7 @@
 }
 
 -(void)playLocalFile {
-    
-    [[AFSoundManager sharedManager]startPlayingLocalFileWithName:@"jazz.mp3" andBlock:^(int percentage, CGFloat elapsedTime, CGFloat timeRemaining, NSError *error, BOOL finished) {
+    [[AFSoundManager sharedManager] startPlayingLocalFileInMainResourceBundleWithName:@"jazz.mp3" andBlock:^(int percentage, CGFloat elapsedTime, CGFloat timeRemaining, NSError *error, BOOL finished) {
         
         NSDateFormatter *formatter = [[NSDateFormatter alloc]init];
         [formatter setDateFormat:@"mm:ss"];

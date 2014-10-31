@@ -10,7 +10,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <AVFoundation/AVFoundation.h>
 
-@interface AFAudioRouter : NSObject <AVAudioPlayerDelegate>
+@interface AFAudioRouter : NSObject <AVAudioPlayerDelegate,AVAudioSessionDelegate>
 
 +(void)initAudioSessionRouting;
 +(void)switchToDefaultHardware;

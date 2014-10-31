@@ -14,8 +14,6 @@
 @property (nonatomic) int type;
 @property (nonatomic, strong) UIImage *artwork;
 
--(void)fetchInfoForCurrentPlaying;
-
 @end
 
 typedef NS_ENUM(int, AFSoundManagerType) {
@@ -32,34 +30,47 @@ typedef NS_ENUM(int, AFSoundManagerType) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         soundManager = [[self alloc]init];
+        [[NSNotificationCenter defaultCenter] addObserver:soundManager
+                                                 selector:@selector(handleAudioSessionInterruption:)
+                                                     name:AVAudioSessionInterruptionNotification
+                                                   object:nil];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:soundManager
+                                                 selector:@selector(handleMediaServicesReset)
+                                                     name:AVAudioSessionMediaServicesWereResetNotification
+                                                   object:nil];
     });
     
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
     [[AVAudioSession sharedInstance] setActive:YES error:nil];
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     
+    
+    
     return soundManager;
 }
 
--(void)startPlayingLocalFileWithName:(NSString *)name andBlock:(progressBlock)block {
-    
+-(void)startPlayingLocalFileInMainResourceBundleWithName:(NSString *)name andBlock:(progressBlock)block{
+    NSString *filePath = [NSString stringWithFormat:@"%@/%@", [[NSBundle mainBundle]resourcePath], name];
+    [self startPlayingLocalFileWithPath:filePath andBlock:block];
+}
+
+-(void)startPlayingLocalFileWithPath:(NSString *)localFilePath andBlock:(progressBlock)block{
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
     [[AVAudioSession sharedInstance] setActive:YES error:nil];
     
-    NSString *filePath = [NSString stringWithFormat:@"%@/%@", [[NSBundle mainBundle]resourcePath], name];
-    NSURL *fileURL = [NSURL fileURLWithPath:filePath];
+    NSURL *fileURL = [NSURL fileURLWithPath:localFilePath];
     NSError *error = nil;
     
     NSData *data = [[NSData alloc] initWithContentsOfURL:fileURL options:NSDataReadingMappedIfSafe error:nil];
-
+    
     _audioPlayer = [[AVAudioPlayer alloc]initWithData:data error:&error];
+    _audioPlayer.delegate = self;
     [_audioPlayer play];
     
     _type = AFSoundManagerTypeLocal;
     _status = AFSoundManagerStatusPlaying;
     [_delegate currentPlayingStatusChanged:AFSoundManagerStatusPlaying];
-    
-    [self fetchInfoForCurrentPlaying];
     
     __block int percentage = 0;
     
@@ -69,14 +80,14 @@ typedef NS_ENUM(int, AFSoundManagerType) {
             
             percentage = (int)((_audioPlayer.currentTime * 100)/_audioPlayer.duration);
             int timeRemaining = _audioPlayer.duration - _audioPlayer.currentTime;
-
+            
             if (block) {
                 block(percentage, _audioPlayer.currentTime, timeRemaining, error, NO);
             }
         } else {
             
             int timeRemaining = _audioPlayer.duration - _audioPlayer.currentTime;
-
+            
             if (block) {
                 block(100, _audioPlayer.currentTime, timeRemaining, error, YES);
             }
@@ -173,24 +184,30 @@ typedef NS_ENUM(int, AFSoundManagerType) {
 }
 
 -(void)pause {
-    [_audioPlayer pause];
-    [_player pause];
-    [_timer pauseTimer];
-    _status = AFSoundManagerStatusPaused;
-    [_delegate currentPlayingStatusChanged:AFSoundManagerStatusPaused];
+    if(_audioPlayer || _player){
+        [_audioPlayer pause];
+        [_player pause];
+        [_timer pauseTimer];
+        _status = AFSoundManagerStatusPaused;
+        [_delegate currentPlayingStatusChanged:AFSoundManagerStatusPaused];
+    }
 }
 
 -(void)resume {
-    [_audioPlayer play];
-    [_player play];
-    [_timer resumeTimer];
-    _status = AFSoundManagerStatusPlaying;
-    [_delegate currentPlayingStatusChanged:AFSoundManagerStatusPlaying];
+    if(_audioPlayer || _player){
+        [_audioPlayer play];
+        [_player play];
+        [_timer resumeTimer];
+        _status = AFSoundManagerStatusPlaying;
+        [_delegate currentPlayingStatusChanged:AFSoundManagerStatusPlaying];
+    }
 }
 
 -(void)stop {
     [_audioPlayer stop];
+    _audioPlayer.delegate = nil;
     _player = nil;
+    _audioPlayer = nil;
     [_timer pauseTimer];
     _status = AFSoundManagerStatusStopped;
     [_delegate currentPlayingStatusChanged:AFSoundManagerStatusStopped];
@@ -308,6 +325,48 @@ typedef NS_ENUM(int, AFSoundManagerType) {
     [AFAudioRouter initAudioSessionRouting];
     [AFAudioRouter forceOutputToBuiltInSpeakers];
 }
+
+#pragma mark Interruption handling
+
+- (void)handleAudioSessionInterruption:(NSNotification*)notification {
+    
+    NSNumber *interruptionType = [[notification userInfo] objectForKey:AVAudioSessionInterruptionTypeKey];
+    NSNumber *interruptionOption = [[notification userInfo] objectForKey:AVAudioSessionInterruptionOptionKey];
+    
+    switch (interruptionType.unsignedIntegerValue) {
+        case AVAudioSessionInterruptionTypeBegan:{
+            // • Audio has stopped, already inactive
+            // • Change state of UI, etc., to reflect non-playing state
+            [self pause];
+        } break;
+        case AVAudioSessionInterruptionTypeEnded:{
+            // • Make session active
+            // • Update user interface
+            // • AVAudioSessionInterruptionOptionShouldResume option
+            if (interruptionOption.unsignedIntegerValue == AVAudioSessionInterruptionOptionShouldResume) {
+                // Here you should continue playback.
+                [self resume];
+            }
+        } break;
+        default:
+            break;
+    }
+}
+
+- (void)handleMediaServicesReset {
+    // • No userInfo dictionary for this notification
+    // • Audio streaming objects are invalidated (zombies)
+    // • Handle this notification by fully reconfiguring audio
+}
+
+- (void) audioPlayerBeginInterruption: (AVAudioPlayer *) player {
+    [self pause];
+}
+
+- (void) audioPlayerEndInterruption: (AVAudioPlayer *) player {
+    [self resume];
+}
+
 
 @end
 
